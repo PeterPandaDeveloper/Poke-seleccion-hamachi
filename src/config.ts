@@ -1,0 +1,16 @@
+export const CONFIG = {
+  PUERTO:            process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
+  MAX_RONDAS:        6,
+  TIMER_SEG:         10,
+  COOLDOWN_LIMPIAR:  12_000,
+  MAX_SALAS:         20,
+  TTL_SIN_JUGADORES: 7 * 60 * 1000,
+  TTL_CHECK_MS:      60 * 1000,
+  MAX_BODY_BYTES:    64 * 1024,
+  MAX_CHAT_MSG:      200,
+  MAX_CHAT_HISTORIAL:50,
+  BUZZ_COOLDOWN_MS:  8_000,
+  RATE_CREAR_SALA:   5,
+  RATE_UNIRSE:       10,
+  RATE_VENTANA_MS:   60_000,
+} as const

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desafío de Pokélección</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Flash de transición -->
+<div id="battle-flash" class="battle-flash"></div>
+
+<!-- Toast -->
+<div id="toast" class="toast" style="display:none"></div>
+
+<!-- MODAL INFO -->
+<div id="modal-info" class="modal-overlay" style="display:none" onclick="cerrarInfo(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="cerrarInfo()">✕</button>
+    <h3 class="modal-titulo" id="info-titulo"></h3>
+    <div class="modal-cuerpo" id="info-cuerpo"></div>
+  </div>
+</div>
+
+<!-- MODAL TUTORIAL -->
+<div id="modal-tutorial" class="modal-overlay" style="display:none">
+  <div class="modal-box modal-tutorial-box">
+    <h3 class="modal-titulo">🎁 ¿Cómo jugar?</h3>
+    <div class="tutorial-pasos">
+      <div class="tutorial-paso"><span class="paso-num">1</span><div><strong>Crea o únete a una sala</strong><br>Comparte el enlace con tu rival. Elige tu rol (Jugador 1 o 2) y escribe tu nombre.</div></div>
+      <div class="tutorial-paso"><span class="paso-num">2</span><div><strong>Vota la configuración</strong><br>Cada jugador elige región, tipos y restricciones. Se aplica el resultado combinado de ambos votos.</div></div>
+      <div class="tutorial-paso"><span class="paso-num">3</span><div><strong>¡Confirma cuando estés listo!</strong><br>Ambos jugadores deben confirmar. El sistema prepara el pool de Pokémon.</div></div>
+      <div class="tutorial-paso"><span class="paso-num">4</span><div><strong>Elige por turnos (10 segundos)</strong><br>Cada turno aparecen 2 Pokémon. Eliges uno, el otro va al rival. Hay 6 rondas.</div></div>
+      <div class="tutorial-paso"><span class="paso-num">5</span><div><strong>Exporta a Pokémon Showdown</strong><br>Al terminar, copia tu equipo y ábrelo directamente en Showdown para batalla.</div></div>
+    </div>
+    <button class="btn-accion" style="width:100%;margin-top:16px" onclick="cerrarTutorial()">¡Entendido, a jugar!</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════ LOBBY ══════════════════════════ -->
+<div id="pantalla-lobby" class="pantalla">
+  <div class="main-container lobby-container">
+
+    <div class="titulo-bloque">
+      <h1 class="title">Desafío de Pokélección</h1>
+      <p class="subtitle">Elige tu equipo · Compatible con Pokémon Showdown</p>
+      <button class="btn-tutorial-link" onclick="mostrarTutorial()">¿Cómo jugar?</button>
+    </div>
+
+    <!-- PASO 1: nombre/rol -->
+    <div id="paso-nombre" class="lobby-step">
+      <div class="box-gba">
+        <h2 class="step-title" id="paso-titulo">¿Quién eres?</h2>
+
+        <!-- Selector de salas públicas -->
+        <div class="salas-section">
+          <div class="salas-header">
+            <span class="salas-label">Salas disponibles</span>
+            <button class="btn-sala-nueva" onclick="crearNuevaSala()">+ Nueva sala</button>
+          </div>
+          <div id="salas-publicas" class="salas-lista">
+            <p class="sin-salas">Cargando salas...</p>
+          </div>
+        </div>
+
+        <div class="divider-o">— o entra directamente —</div>
+
+        <div class="nombre-form">
+          <div class="sala-selector-row">
+            <span class="sala-actual">Sala: <strong id="sala-id-display">—</strong></span>
+            <button class="btn-copiar-sala" onclick="copiarEnlace()">🔗 Copiar enlace</button>
+          </div>
+          <div class="input-row">
+            <label class="ctrl-label">Rol</label>
+            <select id="rol-selector" onchange="onRolChange()">
+              <option value="jugador1">🔴 Jugador 1</option>
+              <option value="jugador2">🟢 Jugador 2</option>
+              <option value="espectador">👁 Espectador</option>
+            </select>
+          </div>
+          <div class="input-row" id="fila-nombre">
+            <label class="ctrl-label">Nombre</label>
+            <input type="text" id="input-nombre" maxlength="20" placeholder="Nombre de entrenador..." autocomplete="off"/>
+          </div>
+          <button id="btn-unirse" onclick="unirseAlLobby()">Entrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASO 2: sala de espera + configuración -->
+    <div id="paso-lobby" class="lobby-step" style="display:none">
+      <div class="sala-grid">
+
+        <!-- Panel jugadores -->
+        <div class="box-gba jugadores-panel">
+          <h3 class="panel-title">Sala <span id="sala-id-lobby" class="sala-id-badge"></span></h3>
+          <div class="jugador-slot j1-slot">
+            <span class="slot-ico">🔴</span>
+            <div class="slot-info">
+              <span class="slot-nom" id="nom-j1-lobby">Esperando...</span>
+              <span class="slot-est" id="est-j1-lobby">—</span>
+            </div>
+          </div>
+          <div class="jugador-slot j2-slot">
+            <span class="slot-ico">🟢</span>
+            <div class="slot-info">
+              <span class="slot-nom" id="nom-j2-lobby">Esperando...</span>
+              <span class="slot-est" id="est-j2-lobby">—</span>
+            </div>
+          </div>
+          <div class="esp-badge" id="esp-badge" style="display:none">
+            👁 <span id="esp-count">0</span> espectador(es)
+          </div>
+          <div class="aviso-demo">
+            <span class="ico-demo">🗳</span>
+            <div><strong>Votación democrática</strong><br>Ambos votan · gana el consenso</div>
+          </div>
+          <div id="cooldown-msg" class="cooldown-msg" style="display:none"></div>
+          <div id="panel-limpiar" class="panel-limpiar" style="display:none">
+            <label class="tog tog-privada">
+              <input type="checkbox" id="chk-privada" onchange="togglePrivada()">
+              🔒 Sala privada
+            </label>
+            <button class="btn-limpiar" onclick="limpiarSala()">🧹 Borrar selecciones</button>
+          </div>
+
+          <!-- CHAT DEL LOBBY -->
+          <div class="chat-panel" id="chat-panel-lobby">
+            <div class="chat-titulo">💬 Chat</div>
+            <div class="chat-mensajes" id="chat-mensajes-lobby"></div>
+            <div class="chat-input-row">
+              <input type="text" id="chat-input-lobby" maxlength="200" placeholder="Mensaje..." class="chat-input"/>
+              <button onclick="enviarChat()" class="btn-chat-send">↵</button>
+              <button onclick="enviarBuzz()" id="btn-buzz-lobby" class="btn-buzz" title="Avisar al otro jugador">🔔 Avisar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel configuración -->
+        <div class="box-gba config-panel" id="config-panel-wrap">
+          <h3 class="panel-title">Configuración del duelo</h3>
+
+          <!-- Región (multi) -->
+          <div class="cfg-grupo">
+            <div class="cfg-label-row">
+              <label class="cfg-label">Región</label>
+              <button class="btn-info-small" onclick="mostrarInfo('region')">?</button>
+            </div>
+            <div class="region-grid">
+              <button class="rbtn active" data-r="todas"  onclick="toggleRegion(this)">Todas</button>
+              <button class="rbtn" data-r="kanto"  onclick="toggleRegion(this)">Kanto</button>
+              <button class="rbtn" data-r="johto"  onclick="toggleRegion(this)">Johto</button>
+              <button class="rbtn" data-r="hoenn"  onclick="toggleRegion(this)">Hoenn</button>
+              <button class="rbtn" data-r="sinnoh" onclick="toggleRegion(this)">Sinnoh</button>
+              <button class="rbtn" data-r="unova"  onclick="toggleRegion(this)">Unova</button>
+              <button class="rbtn" data-r="kalos"  onclick="toggleRegion(this)">Kalos</button>
+              <button class="rbtn" data-r="alola"  onclick="toggleRegion(this)">Alola</button>
+              <button class="rbtn" data-r="galar"  onclick="toggleRegion(this)">Galar</button>
+              <button class="rbtn" data-r="paldea" onclick="toggleRegion(this)">Paldea</button>
+              <button class="rbtn" data-r="hisui"  onclick="toggleRegion(this)">Hisui</button>
+            </div>
+            <p class="cfg-hint" id="hint-regiones">Selección: todas</p>
+          </div>
+
+          <!-- Tipos -->
+          <div class="cfg-grupo">
+            <div class="cfg-label-row">
+              <label class="cfg-label">Tipos</label>
+              <span class="cfg-hint">Uno o más (opcional)</span>
+            </div>
+            <div class="tipo-grid" id="tipo-grid"></div>
+            <div class="modo-tipos" id="modo-tipos-row" style="display:none">
+              <span class="cfg-hint">Modo:</span>
+              <label class="radio-lbl"><input type="radio" name="modoTipos" value="OR" checked> Al menos uno</label>
+              <label class="radio-lbl"><input type="radio" name="modoTipos" value="AND"> Todos exactos</label>
+            </div>
+          </div>
+
+          <!-- Etapa evolutiva -->
+          <div class="cfg-grupo">
+            <div class="cfg-label-row">
+              <label class="cfg-label">Etapa evolutiva</label>
+              <button class="btn-info-small" onclick="mostrarInfo('evolucion')">?</button>
+            </div>
+            <div class="restr-grid">
+              <label class="tog"><input type="checkbox" id="chk-finales" onchange="syncRestr(this)"> Solo completamente evolucionados</label>
+              <label class="tog"><input type="checkbox" id="chk-sinevo"  onchange="syncRestr(this)"> Sin ninguna evolución posible</label>
+              <label class="tog"><input type="checkbox" id="chk-base"    onchange="syncRestr(this)"> Solo primera etapa (cualquier cadena)</label>
+              <label class="tog tog-destacada">
+                <input type="checkbox" id="chk-copabebe" onchange="syncRestr(this)">
+                🍼 Copa Bebé — primera etapa de cadenas evolutivas largas
+                <button class="btn-info-inline" onclick="mostrarInfo('copabebe')">?</button>
+              </label>
+            </div>
+            <div class="incomp-warn" id="warn-evolucion" style="display:none">
+              ⚠️ Solo puede activarse una opción de etapa a la vez.
+            </div>
+          </div>
+
+          <!-- Otras restricciones -->
+          <div class="cfg-grupo">
+            <label class="cfg-label">Otras restricciones</label>
+            <div class="restr-grid">
+              <label class="tog"><input type="checkbox" id="chk-sin-leg"> Sin legendarios ni míticos</label>
+              <label class="tog">
+                <input type="checkbox" id="chk-nodup"> Sin tipos repetidos en el equipo
+                <button class="btn-info-inline" onclick="mostrarInfo('nodup')">?</button>
+              </label>
+            </div>
+          </div>
+
+          <!-- BST -->
+          <div class="cfg-grupo">
+            <div class="cfg-label-row">
+              <label class="cfg-label">BST</label>
+              <button class="btn-info-small" onclick="mostrarInfo('bst')">?</button>
+            </div>
+            <div class="bst-row">
+              <label class="cfg-hint">Mín.</label>
+              <input type="number" id="bst-min" min="0" max="1200" step="10" placeholder="300" class="bst-input"/>
+              <label class="cfg-hint">Máx.</label>
+              <input type="number" id="bst-max" min="0" max="1200" step="10" placeholder="600" class="bst-input"/>
+            </div>
+          </div>
+
+          <!-- Votos en vivo -->
+          <div class="votos-live" id="votos-display" style="display:none">
+            <div class="voto-fila" id="voto-j1-disp"></div>
+            <div class="voto-fila" id="voto-j2-disp"></div>
+          </div>
+          <div class="cfg-acordado" id="cfg-acordado" style="display:none"></div>
+
+          <!-- Acciones -->
+          <div class="cfg-acciones" id="cfg-acciones">
+            <button class="btn-accion btn-votar" onclick="votarConfig('propio')">🗳 Votar mi configuración</button>
+            <button class="btn-accion btn-votar-j2" id="btn-votar-j2" onclick="votarConfigOtro()" style="display:none">
+              Elegir config. del otro jugador
+            </button>
+            <button class="btn-accion btn-listo" id="btn-listo" onclick="marcarListo()" style="display:none">
+              ¡Listo para el duelo!
+            </button>
+          </div>
+          <div id="msg-pool" class="msg-cargando" style="display:none">
+            <span class="spin">⚙</span> Preparando el grupo de Pokémon...
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ DRAFT ══════════════════════════ -->
+<div id="pantalla-draft" class="pantalla" style="display:none">
+  <div class="main-container">
+
+    <div class="titulo-bloque">
+      <h1 class="title">Desafío de Pokélección</h1>
+      <div id="reglas-pill" class="reglas-pill"></div>
+    </div>
+
+    <div class="controles-draft">
+      <div class="round-pill" id="ronda-txt">Ronda 0 / 6</div>
+      <div class="esp-pill" id="esp-pill" style="display:none">👁 <span id="esp-count-draft">0</span></div>
+      <div class="conn-pill conn-ok" id="conn-pill">🟢 Conectado</div>
+      <button class="btn-copiar-sala-draft" onclick="copiarEnlace()" title="Copiar enlace de sala">🔗</button>
+      <button class="btn-reiniciar" onclick="resetear()">↺ Reiniciar</button>
+    </div>
+
+    <div class="arena">
+      <div class="team-panel">
+        <h2 class="player-name j1-color" id="nom-j1-draft">Jugador 1</h2>
+        <div class="poke-grid" id="equipo-j1"></div>
+      </div>
+
+      <div class="draft-zone">
+        <h2 class="turno-msg" id="turno-alert">Esperando...</h2>
+        <div class="timer-wrap" id="timer-wrap" style="display:none">
+          <svg class="timer-ring" viewBox="0 0 80 80">
+            <circle class="ring-bg" cx="40" cy="40" r="34"/>
+            <circle class="ring-fg" id="ring-fg" cx="40" cy="40" r="34"
+                    stroke-dasharray="213.6" stroke-dashoffset="0"/>
+          </svg>
+          <span class="timer-num" id="timer-num">10</span>
+        </div>
+        <div class="cards-container" id="opciones-render"></div>
+        <div class="aviso-random" id="random-tag" style="display:none">
+          ⚡ Tiempo agotado — Pokémon asignado al azar
+        </div>
+
+        <!-- Chat en draft -->
+        <div class="chat-panel chat-panel-draft">
+          <div class="chat-titulo">💬 Chat</div>
+          <div class="chat-mensajes" id="chat-mensajes"></div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" maxlength="200" placeholder="Mensaje..." class="chat-input"/>
+            <button onclick="enviarChat()" class="btn-chat-send">↵</button>
+            <button onclick="enviarBuzz()" id="btn-buzz" class="btn-buzz">🔔 Avisar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="team-panel">
+        <h2 class="player-name j2-color" id="nom-j2-draft">Jugador 2</h2>
+        <div class="poke-grid" id="equipo-j2"></div>
+      </div>
+    </div>
+
+    <!-- Exportar -->
+    <div id="showdown-box" class="showdown-area" style="display:none">
+      <h2 class="export-title">Exportar a Showdown</h2>
+      <p class="nota-regla">⚠️ <strong>Regla:</strong> Puedes cambiar ataques, habilidades y objetos. Los Pokémon son obligatorios.</p>
+      <div class="export-grid">
+        <div class="export-col">
+          <h3 class="j1-color" id="sd-title-j1">Jugador 1</h3>
+          <textarea id="sd-j1" readonly></textarea>
+          <div class="export-btns">
+            <button class="btn-accion" onclick="copiarCodigo('sd-j1',this)">📋 Copiar</button>
+            <button class="btn-showdown j1-showdown" onclick="abrirShowdown('sd-j1')">⚡ Abrir en Showdown</button>
+          </div>
+        </div>
+        <div class="export-col">
+          <h3 class="j2-color" id="sd-title-j2">Jugador 2</h3>
+          <textarea id="sd-j2" readonly></textarea>
+          <div class="export-btns">
+            <button class="btn-accion" onclick="copiarCodigo('sd-j2',this)">📋 Copiar</button>
+            <button class="btn-showdown j2-showdown" onclick="abrirShowdown('sd-j2')">⚡ Abrir en Showdown</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn-accion" style="margin-top:14px;display:block;margin-left:auto;margin-right:auto" onclick="copiarAmbos(this)">📋 Copiar ambos equipos</button>
+    </div>
+
+  </div>
+</div>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>
