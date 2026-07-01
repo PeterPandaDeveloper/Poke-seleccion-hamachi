@@ -189,6 +189,20 @@ button:active {
   border-color: #999;
   color: #333;
   width: 100%;
+  margin-bottom: 6px;
+}
+
+.btn-keepalive {
+  background: #7c4dff;
+  border-color: #651fff;
+  color: white;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.btn-keepalive:hover {
+  background: #651fff;
+  border-color: #6200ea;
 }
 
 .sala-grid {

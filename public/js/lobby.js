@@ -3,6 +3,7 @@ import { Sonido }  from './sonido.js'
 import { estado, API, post, guardarSesion, fetchEstado } from './api.js'
 import { mostrarInfo, mostrarToast } from './modal.js'
 import { precargaBatch, evoCache, typeCache, bstCache } from './pokeapi.js'
+import { renderChat } from './draft.js'
 
 // ─── ESTADO LOCAL DE CONFIG ───────────────────────────────────────────────────
 export let regionesSel  = new Set(['todas'])
@@ -21,6 +22,7 @@ export function construirTipos() {
 export function onRolChange() {
   const r = document.getElementById('rol-selector').value
   document.getElementById('fila-nombre').style.display = r==='espectador'?'none':'flex'
+  document.getElementById('fila-nombre-esp').style.display = r==='espectador'?'flex':'none'
   document.getElementById('paso-titulo').textContent   = r==='espectador'?'Entrar como espectador':'¿Quién eres?'
   document.getElementById('btn-unirse').textContent    = r==='espectador'?'Entrar a mirar':'Entrar'
 }
@@ -82,17 +84,20 @@ export function leerVoto() {
 export function etiquetaVoto(v) {
   if (!v) return 'Sin voto'
   const p=[]
-  if (v.regiones&&!v.regiones.includes('todas')) p.push('📍 '+v.regiones.join('+'))
-  if (v.tipos?.length) p.push((v.modoTipos==='AND'?'AND ':'OR ')+v.tipos.join('+'))
-  if (v.sinLegendarios)   p.push('Sin leg.')
-  if (v.soloFinales)      p.push('Evol. final')
-  if (v.soloSinEvolucion) p.push('Sin evo.')
-  if (v.soloBase)         p.push('1.ª etapa')
-  if (v.copaBebe)         p.push('🍼 Copa Bebé')
-  if (v.noDuplicadosTipo) p.push('Sin tipos dup.')
-  if (v.minBST) p.push('BST≥'+v.minBST)
-  if (v.maxBST) p.push('BST≤'+v.maxBST)
-  return p.length ? p.join(' · ') : 'Sin restricciones'
+  if (v.regiones&&!v.regiones.includes('todas')) p.push('📍 Regiones: '+v.regiones.join(', '))
+  if (v.tipos?.length) {
+    const modo = v.modoTipos==='AND' ? 'todos estos tipos' : 'cualquiera de estos tipos'
+    p.push('⚔️ Tipos: '+v.tipos.join(', ')+' ('+modo+')')
+  }
+  if (v.sinLegendarios)   p.push('🚫 Sin legendarios')
+  if (v.soloFinales)      p.push('⬆️ Solo evolucionados al máximo')
+  if (v.soloSinEvolucion) p.push('⛔ Sin evolución posible')
+  if (v.soloBase)         p.push('🐣 Solo primera etapa')
+  if (v.copaBebe)         p.push('🍼 Copa Bebé (bebés con futuro)')
+  if (v.noDuplicadosTipo) p.push('🔄 Tipos únicos en equipo')
+  if (v.minBST) p.push('📊 BST mínimo: '+v.minBST)
+  if (v.maxBST) p.push('📊 BST máximo: '+v.maxBST)
+  return p.length ? p.join(' · ') : '🎯 Sin restricciones'
 }
 
 const CONFIG_CTRLS = '.config-panel input, .config-panel select, .rbtn, .tbtn, .tog input, .bst-input, .btn-votar, .btn-votar-j2'
@@ -159,9 +164,12 @@ export async function unirseAlLobby() {
   const rol    = document.getElementById('rol-selector').value
   const nombre = document.getElementById('input-nombre')?.value.trim()
   if (rol==='espectador') {
-    estado.miRol='espectador'; estado.miToken=''
-    fetch(`${API()}/espectador/unirse`,{method:'POST'}).catch(()=>{})
-    window.addEventListener('beforeunload',()=>navigator.sendBeacon(`${API()}/espectador/salir`))
+    const nomEsp = document.getElementById('input-nombre-esp')?.value.trim() || 'Espectador'
+    estado.miRol='espectador'; estado.miToken=''; estado.miNombre=nomEsp
+    try {
+      await fetch(`${API()}/espectador/unirse`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:nomEsp})})
+    } catch {}
+    window.addEventListener('beforeunload',()=>navigator.sendBeacon(`${API()}/espectador/salir`,JSON.stringify({nombre:nomEsp})))
     Sonido.click(); mostrarPasoLobby(); return
   }
   if (!nombre) { Sonido.error(); mostrarToast('⚠️ Escribe tu nombre.','err'); return }

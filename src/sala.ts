@@ -13,7 +13,7 @@ export interface LobbyJugador { nombre: string; listo: boolean; voto: VotoConfig
 export interface Jugador       { equipo: number[]; conectado: boolean; token: string|null; nombre: string; lastSeen: number }
 
 export interface MensajeChat {
-  id: string; autor: string; rol: 'jugador1'|'jugador2'|'sistema'
+  id: string; autor: string; rol: 'jugador1'|'jugador2'|'sistema'|'espectador'
   texto: string; ts: number
 }
 

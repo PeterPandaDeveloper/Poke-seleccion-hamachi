@@ -223,7 +223,12 @@ export async function enviarChat() {
   if (!texto) return
   if (input) input.value = ''
   try {
-    await post('/chat', {texto})
+    // Si es espectador sin token, enviar con nombreEspectador
+    const body = {texto}
+    if (estado.miRol === 'espectador' || (!estado.miToken)) {
+      body.nombreEspectador = estado.miNombre || 'Espectador'
+    }
+    await post('/chat', body)
     ultimoChatSig = ''
     const est = await fetchEstado()
     await renderChat(est)

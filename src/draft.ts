@@ -46,17 +46,20 @@ export function resolverConfig(v1: VotoConfig, v2: VotoConfig): VotoConfig {
 
 export function etiquetaConfig(c: VotoConfig): string {
   const p: string[] = []
-  if (!c.regiones.includes('todas')) p.push('📍 '+c.regiones.join('+'))
-  if (c.tipos.length) p.push((c.modoTipos==='AND'?'AND ':'OR ')+c.tipos.join('+'))
-  if (c.sinLegendarios)   p.push('Sin leg.')
-  if (c.soloFinales)      p.push('Evol. final')
-  if (c.soloSinEvolucion) p.push('Sin evo.')
-  if (c.soloBase)         p.push('1.ª etapa')
-  if (c.copaBebe)         p.push('🍼 Copa Bebé')
-  if (c.noDuplicadosTipo) p.push('Sin tipos dup.')
-  if (c.minBST) p.push(`BST≥${c.minBST}`)
-  if (c.maxBST) p.push(`BST≤${c.maxBST}`)
-  return p.length ? p.join(' · ') : 'Sin restricciones'
+  if (!c.regiones.includes('todas')) p.push('📍 Regiones: '+c.regiones.join(', '))
+  if (c.tipos.length) {
+    const modo = c.modoTipos==='AND' ? 'todos estos tipos' : 'cualquiera de estos tipos'
+    p.push('⚔️ Tipos: '+c.tipos.join(', ')+' ('+modo+')')
+  }
+  if (c.sinLegendarios)   p.push('🚫 Sin legendarios')
+  if (c.soloFinales)      p.push('⬆️ Solo evolucionados al máximo')
+  if (c.soloSinEvolucion) p.push('⛔ Sin evolución')
+  if (c.soloBase)         p.push('🐣 Solo primera etapa')
+  if (c.copaBebe)         p.push('🍼 Copa Bebé (bebés con futuro)')
+  if (c.noDuplicadosTipo) p.push('🔄 Tipos únicos')
+  if (c.minBST) p.push(`📊 BST ≥ ${c.minBST}`)
+  if (c.maxBST) p.push(`📊 BST ≤ ${c.maxBST}`)
+  return p.length ? p.join(' · ') : '🎯 Sin restricciones'
 }
 
 function pool2pokemon(sala: Sala): void {

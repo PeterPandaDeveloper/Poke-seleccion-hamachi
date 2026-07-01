@@ -2,6 +2,7 @@
 export const estado = {
   miRol:   localStorage.getItem('rol') || '',
   miToken: localStorage.getItem('tok') || '',
+  miNombre: localStorage.getItem('nombre') || '',
   salaId:  new URLSearchParams(location.search).get('sala') || localStorage.getItem('sala') || '',
 }
 

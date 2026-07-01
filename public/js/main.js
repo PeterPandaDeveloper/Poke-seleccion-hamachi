@@ -50,6 +50,16 @@ window.copiarAmbos     = copiarAmbos
 window.abrirShowdown   = abrirShowdown
 window.enviarChat      = enviarChat
 window.enviarBuzz      = enviarBuzz
+window.mantenerViva    = async () => {
+  try {
+    await fetch(`/api/sala/${estado.salaId}/keepalive`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({token:estado.miToken})
+    })
+    Sonido.click()
+    mostrarToast('⏱ ¡Sala extendida por 5 minutos!', 'ok')
+  } catch {}
+}
 window.togglePrivada   = async () => {
   const priv = document.getElementById('chk-privada')?.checked
   try {

@@ -86,9 +86,21 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
       return json(res,200,{...estado,salaId,reglas:estado.config?etiquetaConfig(estado.config):null})
     }
 
-    // Espectadores
-    if (endpoint==='/espectador/unirse'&&m==='POST') { estado.lobby.espectadores++; return json(res,200,{ok:true}) }
-    if (endpoint==='/espectador/salir' &&m==='POST') { if (estado.lobby.espectadores>0) estado.lobby.espectadores--; return json(res,200,{ok:true}) }
+    // Espectadores (con nombre opcional)
+    if (endpoint==='/espectador/unirse'&&m==='POST') {
+      const bodyEsp = JSON.parse(await readBody(req)) as Record<string,unknown>
+      estado.lobby.espectadores++
+      const nombre = String(bodyEsp.nombre??'espectador').trim().slice(0,20)
+      agregarMensajeSistema(sala,`👁 ${nombre} se unió como espectador`)
+      return json(res,200,{ok:true,nombre})
+    }
+    if (endpoint==='/espectador/salir' &&m==='POST') {
+      const bodyEsp = JSON.parse(await readBody(req)) as Record<string,unknown>
+      if (estado.lobby.espectadores>0) estado.lobby.espectadores--
+      const nombre = String(bodyEsp.nombre??'espectador').trim().slice(0,20)
+      agregarMensajeSistema(sala,`👁 ${nombre} dejó de mirar`)
+      return json(res,200,{ok:true})
+    }
 
     // Verificar reconexión
     if (endpoint==='/lobby/verificar'&&m==='POST') {
@@ -193,15 +205,22 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
       return json(res,200,estado)
     }
 
-    // Chat
+    // Chat (jugadores y espectadores)
     if (endpoint==='/chat'&&m==='POST') {
-      if (!rolPropio) return json(res,403,{error:'Solo jugadores pueden chatear.'})
       const texto = String(b.texto??'').trim().slice(0,CONFIG.MAX_CHAT_MSG)
       if (!texto) return json(res,400,{error:'Mensaje vacío.'})
-      const nombre = estado[rolPropio].nombre||rolPropio
+      let nombre: string, rol: string
+      if (rolPropio) {
+        nombre = estado[rolPropio].nombre||rolPropio
+        rol = rolPropio
+      } else {
+        // Espectador sin token
+        nombre = String(b.nombreEspectador??'Espectador').trim().slice(0,20)
+        rol = 'espectador'
+      }
       const msg = {
         id: crypto.randomBytes(4).toString('hex'),
-        autor:nombre, rol:rolPropio as 'jugador1'|'jugador2', texto, ts:Date.now(),
+        autor:nombre, rol: rol as 'jugador1'|'jugador2'|'espectador', texto, ts:Date.now(),
       }
       estado.chat.push(msg)
       if (estado.chat.length>CONFIG.MAX_CHAT_HISTORIAL) estado.chat.shift()
@@ -227,6 +246,14 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
             actualizarHeartbeat(sala, rolPropio as 'jugador1'|'jugador2')
             return json(res,200,{ok:true})
         }
+
+    // ── /keepalive — extender vida de la sala por 5 minutos ────────────────
+    if (endpoint==='/keepalive'&&m==='POST') {
+      sala.sinJugadoresDesde = null
+      agregarMensajeSistema(sala, `⏱ Sala mantenida viva por 5 minutos más`)
+      console.log(`⏱  [${salaId}] Keepalive recibido`)
+      return json(res,200,{ok:true})
+    }
 
     // Sala privada
     if (endpoint==='/privada'&&m==='POST') {

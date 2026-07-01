@@ -86,6 +86,10 @@
             <label class="ctrl-label">Nombre</label>
             <input type="text" id="input-nombre" maxlength="20" placeholder="Nombre de entrenador..." autocomplete="off"/>
           </div>
+          <div class="input-row" id="fila-nombre-esp" style="display:none">
+            <label class="ctrl-label">Nombre</label>
+            <input type="text" id="input-nombre-esp" maxlength="20" placeholder="Tu nombre como espectador..." autocomplete="off"/>
+          </div>
           <button id="btn-unirse" onclick="unirseAlLobby()">Entrar</button>
         </div>
       </div>
@@ -126,6 +130,7 @@
               🔒 Sala privada
             </label>
             <button class="btn-limpiar" onclick="limpiarSala()">🧹 Borrar selecciones</button>
+            <button class="btn-keepalive" onclick="mantenerViva()">⏱ Mantener sala viva</button>
           </div>
 
           <!-- CHAT DEL LOBBY -->
