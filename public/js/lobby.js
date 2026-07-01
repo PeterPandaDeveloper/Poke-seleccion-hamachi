@@ -377,6 +377,20 @@ export function actualizarLobbyUI(est) {
   const ico=lj=>(lj.listo?'✅ Listo':lj.voto?'🗳 Votó':lj.nombre?'🟡 En sala':'—')
   document.getElementById('est-j1-lobby').textContent=ico(lj1)
   document.getElementById('est-j2-lobby').textContent=ico(lj2)
+
+  // Mostrar/ocultar botones de intercambio (liberar slot / tomar slot)
+  const btnLiberar = document.getElementById('btn-liberar')
+  if (btnLiberar) {
+    const esJugador = estado.miRol === 'jugador1' || estado.miRol === 'jugador2'
+    btnLiberar.style.display = esJugador ? 'block' : 'none'
+  }
+  const btnTomarJ1 = document.getElementById('btn-tomar-j1')
+  const btnTomarJ2 = document.getElementById('btn-tomar-j2')
+  if (btnTomarJ1 && btnTomarJ2) {
+    const esEsp = estado.miRol === 'espectador' || !estado.miRol
+    btnTomarJ1.style.display = (esEsp && !est.jugador1.conectado) ? 'block' : 'none'
+    btnTomarJ2.style.display = (esEsp && !est.jugador2.conectado) ? 'block' : 'none'
+  }
   const espN=est.lobby.espectadores||0
   const eb=document.getElementById('esp-badge')
   if (eb) { eb.style.display=espN>0?'block':'none'; document.getElementById('esp-count').textContent=espN }

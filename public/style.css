@@ -205,6 +205,46 @@ button:active {
   border-color: #6200ea;
 }
 
+.intercambio-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.btn-liberar {
+  background: #ff7043;
+  border-color: #e64a19;
+  color: white;
+  width: 100%;
+}
+
+.btn-liberar:hover {
+  background: #e64a19;
+}
+
+.btn-tomar-j1 {
+  background: #d32f2f;
+  border-color: #b71c1c;
+  color: white;
+  width: 100%;
+}
+
+.btn-tomar-j1:hover {
+  background: #b71c1c;
+}
+
+.btn-tomar-j2 {
+  background: #1976d2;
+  border-color: #0d47a1;
+  color: white;
+  width: 100%;
+}
+
+.btn-tomar-j2:hover {
+  background: #0d47a1;
+}
+
 .sala-grid {
   display: grid;
   grid-template-columns: 200px 1fr;

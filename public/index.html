@@ -131,6 +131,11 @@
             </label>
             <button class="btn-limpiar" onclick="limpiarSala()">🧹 Borrar selecciones</button>
             <button class="btn-keepalive" onclick="mantenerViva()">⏱ Mantener sala viva</button>
+            <div id="intercambio-btns" class="intercambio-btns">
+              <button class="btn-liberar" id="btn-liberar" onclick="liberarSlot()" style="display:none">🚪 Dejar mi slot</button>
+              <button class="btn-tomar-j1" id="btn-tomar-j1" onclick="tomarSlot('jugador1')" style="display:none">🔴 Tomar Jugador 1</button>
+              <button class="btn-tomar-j2" id="btn-tomar-j2" onclick="tomarSlot('jugador2')" style="display:none">🟢 Tomar Jugador 2</button>
+            </div>
           </div>
 
           <!-- CHAT DEL LOBBY -->

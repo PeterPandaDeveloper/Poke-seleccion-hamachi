@@ -60,6 +60,41 @@ window.mantenerViva    = async () => {
     mostrarToast('⏱ ¡Sala extendida por 5 minutos!', 'ok')
   } catch {}
 }
+window.liberarSlot     = async () => {
+  if (!estado.miToken || estado.miRol === 'espectador') return
+  if (!confirm('¿Dejar tu slot como jugador y pasar a espectador?')) return
+  try {
+    const r = await fetch(`/api/sala/${estado.salaId}/intercambiar`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({accion:'liberar', token: estado.miToken})
+    })
+    const d = await r.json()
+    if (!r.ok) { mostrarToast('⚠️ '+d.error,'err'); return }
+    estado.miToken = ''
+    estado.miRol = 'espectador'
+    mostrarToast('🚪 Slot liberado, ahora eres espectador','ok')
+    Sonido.click()
+  } catch(e) { mostrarToast('⚠️ Error al liberar slot','err') }
+}
+window.tomarSlot       = async (rol) => {
+  if (!confirm(`¿Tomar el slot de ${rol==='jugador1'?'Jugador 1':'Jugador 2'}?`)) return
+  try {
+    const r = await fetch(`/api/sala/${estado.salaId}/intercambiar`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({accion:'tomar', rol, nombreEspectador: estado.miNombre || 'Espectador'})
+    })
+    const d = await r.json()
+    if (!r.ok) { mostrarToast('⚠️ '+d.error,'err'); return }
+    estado.miToken = d.token
+    estado.miRol = d.rol
+    localStorage.setItem('tok', d.token)
+    localStorage.setItem('rol', d.rol)
+    mostrarToast(`✅ Ahora eres ${d.rol==='jugador1'?'Jugador 1':'Jugador 2'}!`, 'ok')
+    Sonido.seleccionar()
+    // Iniciar heartbeat
+    import('./api.js').then(m => m.iniciarHeartbeat())
+  } catch(e) { mostrarToast('⚠️ Error al tomar slot','err') }
+}
 window.togglePrivada   = async () => {
   const priv = document.getElementById('chk-privada')?.checked
   try {
