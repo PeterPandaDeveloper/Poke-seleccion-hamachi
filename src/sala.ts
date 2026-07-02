@@ -3,9 +3,10 @@ import { CONFIG }  from './config'
 
 // ─── TIPOS ───────────────────────────────────────────────────────────────────
 export interface VotoConfig {
-  regiones: string[]; tipos: string[]; modoTipos: 'OR'|'AND'
+  regiones: string[]; tipos: string[]; colores: string[]; modoTipos: 'OR'|'AND'
   sinLegendarios: boolean; soloFinales: boolean; soloSinEvolucion: boolean
   soloBase: boolean; copaBebe: boolean; noDuplicadosTipo: boolean
+  sinGimmicks: boolean; sinFormasRegionales: boolean
   maxBST: number|null; minBST: number|null
 }
 
@@ -42,6 +43,8 @@ export interface Sala {
   // TTL: expira si no hay jugadores conectados por X ms
   sinJugadoresDesde: number|null
   privada: boolean
+  eliminada?: boolean
+  eliminacionPendiente: { solicitante: 'jugador1'|'jugador2'|null; creadoEn: number }|null
 }
 
 // ─── MAPA GLOBAL ─────────────────────────────────────────────────────────────
@@ -90,6 +93,7 @@ export function obtenerSala(id: string): Sala {
     salas.set(id, {
       id, estado: crearEstado(), pool:[], timer:null,
       creadaEn: ahora, sinJugadoresDesde: ahora, privada: false,
+      eliminacionPendiente: null,
     })
     console.log(`🏠  Sala creada: ${id} (total: ${salas.size})`)
   }

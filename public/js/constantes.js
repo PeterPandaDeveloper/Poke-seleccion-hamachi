@@ -2,6 +2,12 @@ export const TIPOS = ['normal','fuego','agua','planta','eléctrico','hielo',
   'lucha','veneno','tierra','volador','psíquico','bicho',
   'roca','fantasma','dragón','siniestro','acero','hada']
 
+export const COLORES = ['negro','azul','marron','gris','verde','rosa','morado','rojo','blanco','amarillo']
+export const COLOR_HEX = {
+  negro:'#2f2f2f', azul:'#4f46e5', marron:'#8d6e63', gris:'#9e9e9e', verde:'#43a047',
+  rosa:'#ec4899', morado:'#8b5cf6', rojo:'#ef4444', blanco:'#f5f5f5', amarillo:'#facc15'
+}
+
 export const TIPO_EN = {
   normal:'normal',fuego:'fire',agua:'water',planta:'grass','eléctrico':'electric',
   hielo:'ice',lucha:'fighting',veneno:'poison',tierra:'ground',volador:'flying',
@@ -45,6 +51,15 @@ export const LEGENDARIOS = new Set([
   644,645,646,647,648,649,716,717,718,719,720,721,772,773,785,786,787,788,789,790,791,
   792,800,801,802,888,889,890,891,892,893,894,895,896,897,898,
   905,1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1017,1020,1024,1025
+])
+
+export const FORMAS_REGIONALES_ESPECIALES = new Set([
+  ...Object.values(FORMAS_REGIONALES).flat(),
+])
+
+export const GIMMICKS = new Set([
+  793,794,795,796,797,798,799,803,804,805,806,
+  1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1013,1014,1015,1016,1017,1018,1019,1020,1021,1022,1023,1024,1025,
 ])
 
 export const TIMER_SEG = 10

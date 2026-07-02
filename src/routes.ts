@@ -78,7 +78,13 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
   if (endpoint!=='/estado') console.log(`${m} [${salaId}] ${endpoint} — ${ip}`)
 
   try {
-    const sala    = obtenerSala(salaId)
+    const sala = salas.get(salaId) ?? obtenerSala(salaId)
+    if (!sala || sala.eliminada) {
+      return json(res,410,{error:'Sala eliminada', eliminado:true})
+    }
+    if (sala.eliminacionPendiente && (Date.now() - sala.eliminacionPendiente.creadoEn) > 60000) {
+      sala.eliminacionPendiente = null
+    }
     const { estado } = sala
 
     if (endpoint==='/estado') {
@@ -89,14 +95,14 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
     // Espectadores (con nombre opcional)
     if (endpoint==='/espectador/unirse'&&m==='POST') {
       const bodyEsp = JSON.parse(await readBody(req)) as Record<string,unknown>
-      estado.lobby.espectadores++
+      estado.lobby.espectadores = Math.max(0, estado.lobby.espectadores + 1)
       const nombre = String(bodyEsp.nombre??'espectador').trim().slice(0,20)
       agregarMensajeSistema(sala,`👁 ${nombre} se unió como espectador`)
       return json(res,200,{ok:true,nombre})
     }
-    if (endpoint==='/espectador/salir' &&m==='POST') {
+    if (endpoint=='/espectador/salir' &&m==='POST') {
       const bodyEsp = JSON.parse(await readBody(req)) as Record<string,unknown>
-      if (estado.lobby.espectadores>0) estado.lobby.espectadores--
+      estado.lobby.espectadores = Math.max(0, estado.lobby.espectadores - 1)
       const nombre = String(bodyEsp.nombre??'espectador').trim().slice(0,20)
       agregarMensajeSistema(sala,`👁 ${nombre} dejó de mirar`)
       return json(res,200,{ok:true})
@@ -130,7 +136,7 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
         return json(res,200,{estado,token:tkCliente,salaId})
       }
       const nuevoToken = generarToken()
-      j.conectado=true; j.token=nuevoToken
+      j.conectado=true; j.token=nuevoToken; j.nombre=nombre
       estado.lobby[rol as 'jugador1'|'jugador2'].nombre=nombre
       actualizarPresenciaJugadores(sala)
       const otro = rol==='jugador1'?'jugador2':'jugador1'
@@ -166,6 +172,74 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
       estado.chat.push(msg)
       if (estado.chat.length>CONFIG.MAX_CHAT_HISTORIAL) estado.chat.shift()
       return json(res,200,{ok:true})
+    }
+
+    // ── /intercambiar — jugador deja slot libre, espectador toma slot vacío ──
+    // COLOCADO ANTES de la validación de token para que espectadores puedan tomar slots
+    if (endpoint==='/intercambiar'&&m==='POST') {
+      const bodyInt = JSON.parse(await readBody(req)) as Record<string,unknown>
+      const accion  = String(bodyInt.accion??'')
+      if (accion === 'liberar') {
+        const tkLibera = String(bodyInt.token??'')
+        if (validarToken(tkLibera) && estado.jugador1.token===tkLibera) {
+          const nom = estado.jugador1.nombre || estado.lobby.jugador1.nombre || 'J1'
+          estado.jugador1.conectado = false; estado.jugador1.token = null
+          estado.jugador1.nombre = nom
+          estado.lobby.jugador1 = { nombre:'', listo:false, voto:null, bloqueado:false }
+          estado.lobby.espectadores = Math.max(0, estado.lobby.espectadores + 1)
+          actualizarPresenciaJugadores(sala)
+          agregarMensajeSistema(sala,`🔴 ${nom} dejó de ser Jugador 1 (ahora es espectador)`)
+          return json(res,200,{ok:true,rolLiberado:'jugador1'})
+        }
+        if (validarToken(tkLibera) && estado.jugador2.token===tkLibera) {
+          const nom = estado.jugador2.nombre || estado.lobby.jugador2.nombre || 'J2'
+          estado.jugador2.conectado = false; estado.jugador2.token = null
+          estado.jugador2.nombre = nom
+          estado.lobby.jugador2 = { nombre:'', listo:false, voto:null, bloqueado:false }
+          estado.lobby.espectadores = Math.max(0, estado.lobby.espectadores + 1)
+          actualizarPresenciaJugadores(sala)
+          agregarMensajeSistema(sala,`🟢 ${nom} dejó de ser Jugador 2 (ahora es espectador)`)
+          return json(res,200,{ok:true,rolLiberado:'jugador2'})
+        }
+        return json(res,403,{error:'Token no válido para liberar slot.'})
+      }
+      if (accion === 'tomar') {
+        const rolTomar = String(bodyInt.rol??'')
+        if (rolTomar!=='jugador1'&&rolTomar!=='jugador2') return json(res,400,{error:'Rol no válido.'})
+        const j = estado[rolTomar]
+        if (j.conectado) return json(res,409,{error:'Ese slot ya está ocupado.'})
+        const nombreEsp = String(bodyInt.nombreEspectador??'Espectador').trim().slice(0,20)
+        const nuevoToken = generarToken()
+        j.conectado = true; j.token = nuevoToken; j.nombre = nombreEsp || j.nombre
+        estado.lobby[rolTomar].nombre = nombreEsp
+        estado.lobby.espectadores = Math.max(0, estado.lobby.espectadores - 1)
+        actualizarPresenciaJugadores(sala)
+        agregarMensajeSistema(sala,`👁 ${nombreEsp} pasó de espectador a ${rolTomar==='jugador1'?'Jugador 1':'Jugador 2'}`)
+        return json(res,200,{ok:true,token:nuevoToken,rol:rolTomar})
+      }
+      return json(res,400,{error:'Acción no válida. Usar "liberar" o "tomar".'})
+    }
+
+    if (endpoint==='/eliminar'&&m==='POST') {
+      const b = JSON.parse(await readBody(req)) as Record<string,unknown>
+      const tk = String(b.token??'')
+      if (!validarToken(tk)) return json(res,403,{error:'Token no válido.'})
+      const rolPropio = estado.jugador1.token===tk ? 'jugador1' : estado.jugador2.token===tk ? 'jugador2' : null
+      if (!rolPropio) return json(res,403,{error:'Solo los jugadores pueden eliminar la sala.'})
+      if (!sala.eliminacionPendiente) {
+        sala.eliminacionPendiente = { solicitante: rolPropio, creadoEn: Date.now() }
+        const nombre = estado[rolPropio].nombre || (rolPropio==='jugador1'?'Jugador 1':'Jugador 2')
+        agregarMensajeSistema(sala, `🗑️ ${nombre} quiere eliminar la sala. Espera a que el otro jugador confirme.`)
+        return json(res,200,{ok:true, pending:true, solicitante:rolPropio})
+      }
+      if (sala.eliminacionPendiente.solicitante === rolPropio) {
+        return json(res,200,{ok:true, pending:true, solicitante:rolPropio})
+      }
+      const nombre = estado[rolPropio].nombre || (rolPropio==='jugador1'?'Jugador 1':'Jugador 2')
+      agregarMensajeSistema(sala, `🗑️ ${nombre} confirmó la eliminación de la sala.`)
+      if (sala.timer) clearTimeout(sala.timer)
+      salas.delete(salaId)
+      return json(res,200,{ok:true, eliminado:true})
     }
 
     // ── A partir de aquí se requiere token válido ────────────────────────────
@@ -228,50 +302,6 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
         return json(res,400,{error:'Opción no válida.'})
       aplicarEleccion(salaId,sala,jugador,elegido)
       return json(res,200,estado)
-    }
-
-    // ── /intercambiar — jugador deja slot libre, espectador toma slot vacío ──
-    if (endpoint==='/intercambiar'&&m==='POST') {
-      const bodyInt = JSON.parse(await readBody(req)) as Record<string,unknown>
-      const accion  = String(bodyInt.accion??'')
-      if (accion === 'liberar') {
-        // Jugador cede su slot (sin token requerido - cualquiera puede liberar)
-        const tkLibera = String(bodyInt.token??'')
-        if (validarToken(tkLibera) && estado.jugador1.token===tkLibera) {
-          const nom = estado.lobby.jugador1.nombre || 'J1'
-          estado.jugador1.conectado = false
-          estado.jugador1.token = null
-          estado.lobby.jugador1 = { nombre:'', listo:false, voto:null, bloqueado:false }
-          agregarMensajeSistema(sala,`🔴 ${nom} dejó de ser Jugador 1 (ahora es espectador)`)
-          return json(res,200,{ok:true,rolLiberado:'jugador1'})
-        }
-        if (validarToken(tkLibera) && estado.jugador2.token===tkLibera) {
-          const nom = estado.lobby.jugador2.nombre || 'J2'
-          estado.jugador2.conectado = false
-          estado.jugador2.token = null
-          estado.lobby.jugador2 = { nombre:'', listo:false, voto:null, bloqueado:false }
-          agregarMensajeSistema(sala,`🟢 ${nom} dejó de ser Jugador 2 (ahora es espectador)`)
-          return json(res,200,{ok:true,rolLiberado:'jugador2'})
-        }
-        return json(res,403,{error:'Token no válido para liberar slot.'})
-      }
-      if (accion === 'tomar') {
-        // Espectador toma un slot vacío
-        const rolTomar = String(bodyInt.rol??'')
-        if (rolTomar!=='jugador1'&&rolTomar!=='jugador2') return json(res,400,{error:'Rol no válido.'})
-        const j = estado[rolTomar]
-        if (j.conectado) return json(res,409,{error:'Ese slot ya está ocupado.'})
-        const nombreEsp = String(bodyInt.nombreEspectador??'Espectador').trim().slice(0,20)
-        const nuevoToken = generarToken()
-        j.conectado = true
-        j.token = nuevoToken
-        j.nombre = nombreEsp
-        estado.lobby[rolTomar].nombre = nombreEsp
-        if (estado.lobby.espectadores>0) estado.lobby.espectadores--
-        agregarMensajeSistema(sala,`👁 ${nombreEsp} pasó de espectador a ${rolTomar==='jugador1'?'Jugador 1':'Jugador 2'}`)
-        return json(res,200,{ok:true,token:nuevoToken,rol:rolTomar})
-      }
-      return json(res,400,{error:'Acción no válida. Usar "liberar" o "tomar".'})
     }
 
     // Buzz (notificar al otro jugador — anti-spam)

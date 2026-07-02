@@ -2,7 +2,7 @@ import { estado, fetchEstado, guardarSesion, limpiarSesion, iniciarHeartbeat, de
 import { Sonido }        from './sonido.js'
 import { mostrarToast, mostrarInfo, cerrarInfo, mostrarTutorial, cerrarTutorial } from './modal.js'
 import {
-  construirTipos, onRolChange, toggleRegion, toggleTipo, syncRestr,
+  construirTipos, onRolChange, toggleRegion, toggleTipo, toggleColor, syncRestr,
   leerVoto, etiquetaVoto, unirseAlLobby, votarConfig, votarConfigDelOtro, marcarListo,
   limpiarSala, copiarEnlace, crearNuevaSala, actualizarDisplaySala,
   actualizarLobbyUI, mostrarPasoLobby,
@@ -20,6 +20,7 @@ let prevEstadoG = null
 window.onRolChange     = onRolChange
 window.toggleRegion    = toggleRegion
 window.toggleTipo      = toggleTipo
+window.toggleColor     = toggleColor
 window.syncRestr       = syncRestr
 window.unirseAlLobby   = async (...args) => {
   await unirseAlLobby(...args)
@@ -32,6 +33,24 @@ window.marcarListo     = marcarListo
 window.limpiarSala     = limpiarSala
 window.copiarEnlace    = copiarEnlace
 window.crearNuevaSala  = crearNuevaSala
+window.eliminarSala    = async () => {
+  if (!estado.miToken || estado.miRol === 'espectador') return
+  if (!confirm('¿Solicitar la eliminación de la sala para ambos jugadores?')) return
+  try {
+    const r = await fetch(`/api/sala/${estado.salaId}/eliminar`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({token: estado.miToken})
+    })
+    const d = await r.json()
+    if (!r.ok) { mostrarToast('⚠️ '+d.error,'err'); return }
+    if (d.eliminado) {
+      mostrarToast('🗑 Sala eliminada por consenso','ok')
+      setTimeout(() => window.location.href = '/', 700)
+    } else {
+      mostrarToast('🗑 Solicitud enviada. Espera a que el otro jugador confirme.','info')
+    }
+  } catch(e) { mostrarToast('⚠️ Error al eliminar la sala','err') }
+}
 window.mostrarInfo     = mostrarInfo
 window.cerrarInfo      = cerrarInfo
 window.mostrarTutorial = mostrarTutorial
@@ -72,6 +91,8 @@ window.liberarSlot     = async () => {
     if (!r.ok) { mostrarToast('⚠️ '+d.error,'err'); return }
     estado.miToken = ''
     estado.miRol = 'espectador'
+    guardarSesion()
+    mostrarPasoLobby()
     mostrarToast('🚪 Slot liberado, ahora eres espectador','ok')
     Sonido.click()
   } catch(e) { mostrarToast('⚠️ Error al liberar slot','err') }
@@ -79,16 +100,18 @@ window.liberarSlot     = async () => {
 window.tomarSlot       = async (rol) => {
   if (!confirm(`¿Tomar el slot de ${rol==='jugador1'?'Jugador 1':'Jugador 2'}?`)) return
   try {
+    const nombreParaSlot = estado.miNombre || document.getElementById('input-nombre-esp')?.value?.trim() || 'Espectador'
+    estado.miNombre = nombreParaSlot
     const r = await fetch(`/api/sala/${estado.salaId}/intercambiar`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({accion:'tomar', rol, nombreEspectador: estado.miNombre || 'Espectador'})
+      body: JSON.stringify({accion:'tomar', rol, nombreEspectador: nombreParaSlot})
     })
     const d = await r.json()
     if (!r.ok) { mostrarToast('⚠️ '+d.error,'err'); return }
     estado.miToken = d.token
     estado.miRol = d.rol
-    localStorage.setItem('tok', d.token)
-    localStorage.setItem('rol', d.rol)
+    guardarSesion()
+    mostrarPasoLobby()
     mostrarToast(`✅ Ahora eres ${d.rol==='jugador1'?'Jugador 1':'Jugador 2'}!`, 'ok')
     Sonido.seleccionar()
     // Iniciar heartbeat

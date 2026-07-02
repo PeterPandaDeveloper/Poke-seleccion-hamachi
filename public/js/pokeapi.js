@@ -2,6 +2,11 @@ export const nameCache = new Map()
 export const typeCache = new Map()
 export const bstCache  = new Map()
 export const evoCache  = new Map()
+export const colorCache = new Map()
+
+const COLOR_MAP = {
+  black:'negro', blue:'azul', brown:'marron', gray:'gris', green:'verde', pink:'rosa', purple:'morado', red:'rojo', white:'blanco', yellow:'amarillo'
+}
 
 export const imgUrl    = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`
 export const imgSprite = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
@@ -59,6 +64,7 @@ export async function precargaBatch(ids) {
         nameCache.set(id, pk.name)
         typeCache.set(id, pk.types.map(t => t.type.name))
         bstCache.set(id, pk.stats.reduce((s,x) => s+x.base_stat, 0))
+        colorCache.set(id, COLOR_MAP[sp.color?.name] || 'gris')
         // Solo fetch evolution chain si es necesario (Copa Bebé)
         if (sp.evolution_chain?.url) {
           const cR = await fetch(sp.evolution_chain.url)

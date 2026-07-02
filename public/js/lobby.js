@@ -1,13 +1,14 @@
-import { TIPOS, TIPO_COLOR, TIPO_EN, RANGOS, FORMAS_REGIONALES, LEGENDARIOS } from './constantes.js'
+import { TIPOS, TIPO_COLOR, TIPO_EN, RANGOS, FORMAS_REGIONALES, LEGENDARIOS, COLORES, COLOR_HEX, FORMAS_REGIONALES_ESPECIALES, GIMMICKS } from './constantes.js'
 import { Sonido }  from './sonido.js'
 import { estado, API, post, guardarSesion, fetchEstado } from './api.js'
 import { mostrarInfo, mostrarToast } from './modal.js'
-import { precargaBatch, evoCache, typeCache, bstCache } from './pokeapi.js'
+import { precargaBatch, evoCache, typeCache, bstCache, colorCache } from './pokeapi.js'
 import { renderChat } from './draft.js'
 
 // ─── ESTADO LOCAL DE CONFIG ───────────────────────────────────────────────────
 export let regionesSel  = new Set(['todas'])
 export let tiposSel     = new Set()
+export let coloresSel   = new Set()
 export let yaVote       = false
 export let yaListo      = false
 export let cooldownLimpiar = false
@@ -17,6 +18,10 @@ export function construirTipos() {
   document.getElementById('tipo-grid').innerHTML = TIPOS.map(t =>
     `<button class="tbtn" data-t="${t}" style="--tc:${TIPO_COLOR[t]}" onclick="window.toggleTipo(this)">${t}</button>`
   ).join('')
+  const colorGrid = document.getElementById('color-grid')
+  if (colorGrid) {
+    colorGrid.innerHTML = COLORES.map(c => `<button class="cbtn" data-c="${c}" style="--cc:${COLOR_HEX[c]}" onclick="window.toggleColor(this)">${c}</button>`).join('')
+  }
 }
 
 export function onRolChange() {
@@ -49,6 +54,15 @@ export function toggleTipo(btn) {
   const t=btn.dataset.t
   tiposSel.has(t)?(tiposSel.delete(t),btn.classList.remove('active')):(tiposSel.add(t),btn.classList.add('active'))
   document.getElementById('modo-tipos-row').style.display = tiposSel.size>1?'flex':'none'
+  if (tiposSel.size) coloresSel.clear(); document.querySelectorAll('.cbtn').forEach(b=>b.classList.remove('active'))
+  Sonido.click()
+}
+
+export function toggleColor(btn) {
+  const c=btn.dataset.c
+  coloresSel.has(c)?(coloresSel.delete(c),btn.classList.remove('active')):(coloresSel.add(c),btn.classList.add('active'))
+  if (coloresSel.size) tiposSel.clear(); document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'))
+  document.getElementById('modo-tipos-row').style.display = 'none'
   Sonido.click()
 }
 
@@ -68,7 +82,7 @@ export function syncRestr(el) {
 export function leerVoto() {
   const modoEl = document.querySelector('input[name="modoTipos"]:checked')
   return {
-    regiones: [...regionesSel], tipos: [...tiposSel],
+    regiones: [...regionesSel], tipos: [...tiposSel], colores: [...coloresSel],
     modoTipos: modoEl?.value||'OR',
     sinLegendarios:   !!document.getElementById('chk-sin-leg')?.checked,
     soloFinales:      !!document.getElementById('chk-finales')?.checked,
@@ -76,6 +90,8 @@ export function leerVoto() {
     soloBase:         !!document.getElementById('chk-base')?.checked,
     copaBebe:         !!document.getElementById('chk-copabebe')?.checked,
     noDuplicadosTipo: !!document.getElementById('chk-nodup')?.checked,
+    sinGimmicks: !!document.getElementById('chk-gimmicks')?.checked,
+    sinFormasRegionales: !!document.getElementById('chk-formas-reg')?.checked,
     maxBST: document.getElementById('bst-max')?.value ? parseInt(document.getElementById('bst-max').value) : null,
     minBST: document.getElementById('bst-min')?.value ? parseInt(document.getElementById('bst-min').value) : null,
   }
@@ -89,12 +105,15 @@ export function etiquetaVoto(v) {
     const modo = v.modoTipos==='AND' ? 'todos estos tipos' : 'cualquiera de estos tipos'
     p.push('⚔️ Tipos: '+v.tipos.join(', ')+' ('+modo+')')
   }
+  if (v.colores?.length) p.push('🎨 Colores: '+v.colores.join(', '))
   if (v.sinLegendarios)   p.push('🚫 Sin legendarios')
   if (v.soloFinales)      p.push('⬆️ Solo evolucionados al máximo')
   if (v.soloSinEvolucion) p.push('⛔ Sin evolución posible')
   if (v.soloBase)         p.push('🐣 Solo primera etapa')
   if (v.copaBebe)         p.push('🍼 Copa Bebé (bebés con futuro)')
   if (v.noDuplicadosTipo) p.push('🔄 Tipos únicos en equipo')
+  if (v.sinGimmicks) p.push('🪄 Sin gimmicks')
+  if (v.sinFormasRegionales) p.push('🗺️ Sin formas regionales')
   if (v.minBST) p.push('📊 BST mínimo: '+v.minBST)
   if (v.maxBST) p.push('📊 BST máximo: '+v.maxBST)
   return p.length ? p.join(' · ') : '🎯 Sin restricciones'
@@ -114,8 +133,12 @@ export function aplicarVotoEnUI(v) {
     regionesSel.has('todas') ? 'Selección: todas' : 'Selección: '+[...regionesSel].join(', ')
 
   tiposSel = new Set(v.tipos || [])
+  coloresSel = new Set(v.colores || [])
   document.querySelectorAll('.tbtn').forEach(b => {
     b.classList.toggle('active', tiposSel.has(b.dataset.t))
+  })
+  document.querySelectorAll('.cbtn').forEach(b => {
+    b.classList.toggle('active', coloresSel.has(b.dataset.c))
   })
   document.getElementById('modo-tipos-row').style.display = tiposSel.size > 1 ? 'flex' : 'none'
 
@@ -129,6 +152,8 @@ export function aplicarVotoEnUI(v) {
   setChk('chk-base', v.soloBase)
   setChk('chk-copabebe', v.copaBebe)
   setChk('chk-nodup', v.noDuplicadosTipo)
+  setChk('chk-gimmicks', v.sinGimmicks)
+  setChk('chk-formas-reg', v.sinFormasRegionales)
 
   const bstMin = document.getElementById('bst-min')
   const bstMax = document.getElementById('bst-max')
@@ -173,6 +198,7 @@ export async function unirseAlLobby() {
     Sonido.click(); mostrarPasoLobby(); return
   }
   if (!nombre) { Sonido.error(); mostrarToast('⚠️ Escribe tu nombre.','err'); return }
+  estado.miNombre = nombre
   try {
     const d = await post('/lobby/unirse',{rol,nombre,token:estado.miToken||''})
     estado.miRol=rol; estado.miToken=d.token; estado.salaId=d.salaId||estado.salaId
@@ -308,7 +334,7 @@ export async function construirPool(v) {
   if (v.sinLegendarios) ids=ids.filter(id=>!LEGENDARIOS.has(id))
   
   // Si solo hay filtros básicos (sin evolución), no necesitamos API
-  const necesitaAPI=v.soloFinales||v.soloSinEvolucion||v.soloBase||v.copaBebe||v.tipos.length>0||v.maxBST||v.minBST
+  const necesitaAPI=v.soloFinales||v.soloSinEvolucion||v.soloBase||v.copaBebe||v.tipos.length>0||v.colores.length>0||v.maxBST||v.minBST||v.sinFormasRegionales||v.sinGimmicks
   
   if (necesitaAPI) {
     // Para Copa Bebé, limitar a 200 Pokémon aleatorios del pool para evitar timeouts
@@ -331,6 +357,15 @@ export async function construirPool(v) {
       const te=v.tipos.map(t=>TIPO_EN[t]).filter(Boolean)
       ids=v.modoTipos==='AND'?ids.filter(id=>te.every(t=>typeCache.get(id)?.includes(t))):ids.filter(id=>te.some(t=>typeCache.get(id)?.includes(t)))
     }
+    if (v.colores.length) {
+      ids=ids.filter(id => v.colores.includes(colorCache.get(id) || 'gris'))
+    }
+    if (v.sinFormasRegionales) {
+      ids=ids.filter(id=>!FORMAS_REGIONALES_ESPECIALES.has(id))
+    }
+    if (v.sinGimmicks) {
+      ids=ids.filter(id=>!GIMMICKS.has(id))
+    }
     if (v.minBST) ids=ids.filter(id=>(bstCache.get(id)||0)>=v.minBST)
     if (v.maxBST) ids=ids.filter(id=>(bstCache.get(id)||9999)<=v.maxBST)
   }
@@ -341,12 +376,31 @@ export function mostrarPasoLobby() {
   document.getElementById('paso-nombre').style.display='none'
   document.getElementById('paso-lobby').style.display='block'
   const esJugador=estado.miRol==='jugador1'||estado.miRol==='jugador2'
-  document.getElementById('panel-limpiar').style.display=esJugador?'block':'none'
-  document.getElementById('btn-votar-j2').style.display=esJugador?'inline-block':'none'
-  if (estado.miRol==='espectador') {
-    document.getElementById('cfg-acciones').style.display='none'
-    const cp=document.getElementById('config-panel-wrap')
-    if (cp) { cp.style.opacity='0.55'; cp.style.pointerEvents='none' }
+  const esEspectador=estado.miRol==='espectador' || !estado.miRol
+  const panelLimpiar = document.getElementById('panel-limpiar')
+  if (panelLimpiar) panelLimpiar.style.display='block'
+  const btnVotarJ2 = document.getElementById('btn-votar-j2')
+  if (btnVotarJ2) btnVotarJ2.style.display = esJugador ? 'inline-block' : 'none'
+  const btnLimpiar = document.querySelector('.btn-limpiar')
+  const btnKeepalive = document.querySelector('.btn-keepalive')
+  const chkPrivada = document.getElementById('chk-privada')
+  if (btnLimpiar) btnLimpiar.style.display = esJugador ? 'block' : 'none'
+  if (btnKeepalive) btnKeepalive.style.display = esJugador ? 'block' : 'none'
+  if (chkPrivada) chkPrivada.closest('label')?.style.setProperty('display', esJugador ? 'flex' : 'none')
+  const acciones = document.getElementById('cfg-acciones')
+  if (acciones) acciones.style.display = esJugador ? 'block' : 'none'
+  const cp=document.getElementById('config-panel-wrap')
+  if (cp) {
+    cp.style.opacity = esJugador ? '' : '0.55'
+    cp.style.pointerEvents = esJugador ? '' : 'none'
+  }
+  const btnLiberar = document.getElementById('btn-liberar')
+  if (btnLiberar) btnLiberar.style.display = esJugador ? 'block' : 'none'
+  const btnTomarJ1 = document.getElementById('btn-tomar-j1')
+  const btnTomarJ2 = document.getElementById('btn-tomar-j2')
+  if (btnTomarJ1 && btnTomarJ2) {
+    btnTomarJ1.style.display = esEspectador ? 'block' : 'none'
+    btnTomarJ2.style.display = esEspectador ? 'block' : 'none'
   }
 }
 

@@ -192,13 +192,10 @@ export async function renderChat(est) {
   if (!boxes.length) return
 
   const html = chat.length ? chat.map(m => {
-    const cls = m.rol === 'sistema' ? 'chat-sistema' : m.rol === 'jugador1' ? 'chat-j1' : 'chat-j2'
+    const cls = m.rol === 'sistema' ? 'chat-sistema' : m.rol === 'jugador1' ? 'chat-j1' : m.rol === 'jugador2' ? 'chat-j2' : 'chat-esp'
     const ts  = new Date(m.ts).toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'})
-    return `<div class="chat-msg ${cls}">
-      <span class="chat-autor">${m.rol==='sistema'?'':'['+m.autor+'] '}</span>
-      <span class="chat-texto">${escHTML(m.texto)}</span>
-      <span class="chat-ts">${ts}</span>
-    </div>`
+    const autor = m.rol === 'sistema' ? '' : `<span class="chat-autor">[${escHTML(m.autor || 'Usuario')}]</span>`
+    return `<div class="chat-msg ${cls}">${autor}<span class="chat-texto">${escHTML(m.texto)}</span><span class="chat-ts">${ts}</span></div>`
   }).join('') : ''
 
   boxes.forEach(box => { box.innerHTML = html; box.scrollTop = box.scrollHeight })
@@ -287,24 +284,49 @@ async function fmtEquipo(equipo) {
   return lines.join('\n')
 }
 
+function copiarTexto(texto) {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(texto)
+  }
+  const area = document.createElement('textarea')
+  area.value = texto
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.left = '-9999px'
+  document.body.appendChild(area)
+  area.select()
+  document.execCommand('copy')
+  document.body.removeChild(area)
+  return Promise.resolve()
+}
+
 export function copiarCodigo(idEl, btn) {
   const v = document.getElementById(idEl)?.value
   if (!v?.trim()) return
-  navigator.clipboard.writeText(v).then(() => {
+  copiarTexto(v).then(() => {
     Sonido.copiar()
-    const orig = btn.innerHTML; btn.innerHTML='✅ Copiado'; btn.classList.add('copy-ok')
-    setTimeout(()=>{ btn.innerHTML=orig; btn.classList.remove('copy-ok') },2000)
+    const orig = btn?.innerHTML || '📋 Copiar'
+    if (btn) {
+      btn.innerHTML = '✅ Copiado'
+      btn.classList.add('copy-ok')
+      setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copy-ok') }, 2000)
+    }
+  }).catch(() => {
+    mostrarToast('⚠️ No se pudo copiar al portapapeles','err')
   })
 }
 
 export async function copiarAmbos(btn) {
   const j1 = document.getElementById('sd-j1')?.value
   const j2 = document.getElementById('sd-j2')?.value
-  if (!j1||!j2) return
-  await navigator.clipboard.writeText(`=== J1 ===\n\n${j1}\n=== J2 ===\n\n${j2}`)
+  if (!j1 || !j2) return
+  await copiarTexto(`=== J1 ===\n\n${j1}\n=== J2 ===\n\n${j2}`)
   Sonido.copiar()
-  btn.textContent='✅ Copiados'; btn.classList.add('copy-ok')
-  setTimeout(()=>{ btn.textContent='📋 Copiar ambos equipos'; btn.classList.remove('copy-ok') },2000)
+  if (btn) {
+    btn.textContent = '✅ Copiados'
+    btn.classList.add('copy-ok')
+    setTimeout(() => { btn.textContent = '📋 Copiar ambos equipos'; btn.classList.remove('copy-ok') }, 2000)
+  }
 }
 
 export function abrirShowdown(idEl) {

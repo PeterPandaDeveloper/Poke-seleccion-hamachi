@@ -38,6 +38,7 @@ export function guardarSesion() {
   localStorage.setItem('rol',  estado.miRol)
   localStorage.setItem('tok',  estado.miToken)
   localStorage.setItem('sala', estado.salaId)
+  localStorage.setItem('nombre', estado.miNombre || '')
   // Actualizar URL con salaId sin recargar
   if (estado.salaId) {
     const u = new URL(location.href)
@@ -48,7 +49,7 @@ export function guardarSesion() {
 
 export function limpiarSesion() {
   estado.miRol = ''; estado.miToken = ''; estado.salaId = ''
-  localStorage.removeItem('rol'); localStorage.removeItem('tok'); localStorage.removeItem('sala')
+  localStorage.removeItem('rol'); localStorage.removeItem('tok'); localStorage.removeItem('sala'); localStorage.removeItem('nombre')
 }
 
 // ─── HEARTBEAT ────────────────────────────────────────────────────────────────

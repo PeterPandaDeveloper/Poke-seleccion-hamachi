@@ -101,7 +101,10 @@
 
         <!-- Panel jugadores -->
         <div class="box-gba jugadores-panel">
-          <h3 class="panel-title">Sala <span id="sala-id-lobby" class="sala-id-badge"></span></h3>
+          <div class="sala-title-row">
+            <h3 class="panel-title">Sala <span id="sala-id-lobby" class="sala-id-badge"></span></h3>
+            <button class="btn-copiar-sala-lobby" onclick="copiarEnlace()">🔗 Copiar enlace</button>
+          </div>
           <div class="jugador-slot j1-slot">
             <span class="slot-ico">🔴</span>
             <div class="slot-info">
@@ -131,6 +134,7 @@
             </label>
             <button class="btn-limpiar" onclick="limpiarSala()">🧹 Borrar selecciones</button>
             <button class="btn-keepalive" onclick="mantenerViva()">⏱ Mantener sala viva</button>
+            <button class="btn-eliminar-sala" onclick="eliminarSala()">🗑 Eliminar sala</button>
             <div id="intercambio-btns" class="intercambio-btns">
               <button class="btn-liberar" id="btn-liberar" onclick="liberarSlot()" style="display:none">🚪 Dejar mi slot</button>
               <button class="btn-tomar-j1" id="btn-tomar-j1" onclick="tomarSlot('jugador1')" style="display:none">🔴 Tomar Jugador 1</button>
@@ -190,6 +194,15 @@
             </div>
           </div>
 
+          <!-- Colores -->
+          <div class="cfg-grupo">
+            <div class="cfg-label-row">
+              <label class="cfg-label">Colores</label>
+              <span class="cfg-hint">Elige uno o más colores</span>
+            </div>
+            <div class="tipo-grid color-grid" id="color-grid"></div>
+          </div>
+
           <!-- Etapa evolutiva -->
           <div class="cfg-grupo">
             <div class="cfg-label-row">
@@ -216,6 +229,8 @@
             <label class="cfg-label">Otras restricciones</label>
             <div class="restr-grid">
               <label class="tog"><input type="checkbox" id="chk-sin-leg"> Sin legendarios ni míticos</label>
+              <label class="tog"><input type="checkbox" id="chk-gimmicks"> Sin gimmicks / ultraentes / paradojas</label>
+              <label class="tog"><input type="checkbox" id="chk-formas-reg"> Sin formas regionales</label>
               <label class="tog">
                 <input type="checkbox" id="chk-nodup"> Sin tipos repetidos en el equipo
                 <button class="btn-info-inline" onclick="mostrarInfo('nodup')">?</button>

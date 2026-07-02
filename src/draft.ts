@@ -31,6 +31,7 @@ export const FORMAS_REGIONALES: Record<string, number[]> = {
 export function resolverConfig(v1: VotoConfig, v2: VotoConfig): VotoConfig {
   const regiones = [...new Set([...v1.regiones,...v2.regiones])]
   const tipos    = [...new Set([...v1.tipos,...v2.tipos])]
+  const colores  = [...new Set([...v1.colores,...v2.colores])]
   const modoTipos = (v1.modoTipos==='AND'&&v2.modoTipos==='AND') ? 'AND' : 'OR'
   const sinLegendarios   = v1.sinLegendarios   || v2.sinLegendarios
   const soloFinales      = v1.soloFinales      || v2.soloFinales
@@ -39,9 +40,11 @@ export function resolverConfig(v1: VotoConfig, v2: VotoConfig): VotoConfig {
   // Copa Bebé: primera etapa de cadenas con 2+ evoluciones. Excluye legendarios y mono-etapa.
   const copaBebe  = !soloFinales && !soloSinEvolucion && !soloBase && (v1.copaBebe || v2.copaBebe)
   const noDuplicadosTipo = v1.noDuplicadosTipo || v2.noDuplicadosTipo
+  const sinGimmicks = v1.sinGimmicks || v2.sinGimmicks
+  const sinFormasRegionales = v1.sinFormasRegionales || v2.sinFormasRegionales
   const maxBST = v1.maxBST!==null&&v2.maxBST!==null ? Math.min(v1.maxBST,v2.maxBST) : v1.maxBST??v2.maxBST??null
   const minBST = v1.minBST!==null&&v2.minBST!==null ? Math.max(v1.minBST,v2.minBST) : v1.minBST??v2.minBST??null
-  return { regiones, tipos, modoTipos, sinLegendarios, soloFinales, soloSinEvolucion, soloBase, copaBebe, noDuplicadosTipo, maxBST, minBST }
+  return { regiones, tipos, colores, modoTipos, sinLegendarios, soloFinales, soloSinEvolucion, soloBase, copaBebe, noDuplicadosTipo, sinGimmicks, sinFormasRegionales, maxBST, minBST }
 }
 
 export function etiquetaConfig(c: VotoConfig): string {
@@ -51,12 +54,15 @@ export function etiquetaConfig(c: VotoConfig): string {
     const modo = c.modoTipos==='AND' ? 'todos estos tipos' : 'cualquiera de estos tipos'
     p.push('⚔️ Tipos: '+c.tipos.join(', ')+' ('+modo+')')
   }
+  if (c.colores?.length) p.push('🎨 Colores: '+c.colores.join(', '))
   if (c.sinLegendarios)   p.push('🚫 Sin legendarios')
   if (c.soloFinales)      p.push('⬆️ Solo evolucionados al máximo')
   if (c.soloSinEvolucion) p.push('⛔ Sin evolución')
   if (c.soloBase)         p.push('🐣 Solo primera etapa')
   if (c.copaBebe)         p.push('🍼 Copa Bebé (bebés con futuro)')
   if (c.noDuplicadosTipo) p.push('🔄 Tipos únicos')
+  if (c.sinGimmicks) p.push('🪄 Sin gimmicks')
+  if (c.sinFormasRegionales) p.push('🗺️ Sin formas regionales')
   if (c.minBST) p.push(`📊 BST ≥ ${c.minBST}`)
   if (c.maxBST) p.push(`📊 BST ≤ ${c.maxBST}`)
   return p.length ? p.join(' · ') : '🎯 Sin restricciones'
